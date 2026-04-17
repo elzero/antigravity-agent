@@ -108,6 +108,14 @@ jobs:
           ARCH="${{ matrix.arch }}"
           VERSION="${{ inputs.version }}"
 
+          if [ -n "$VERSION" ]; then
+            AG_NAME_MID="_${VERSION}"
+            AG_LINUX_MID="_${VERSION}"
+          else
+            AG_NAME_MID=""
+            AG_LINUX_MID=""
+          fi
+
           rename_with_sig() {
             local file="$1"
             local new_name="$2"
@@ -122,19 +130,29 @@ jobs:
             fi
           }
 
-          if [ ! -d "$BUNDLE_DIR" ]; then
-            echo "❌ Bundle directory not found: $BUNDLE_DIR"
-            echo "Searching for bundle directories:"
-            find src-tauri/target -type d -name "bundle" 2>/dev/null || true
-            exit 1
-          fi
-
-          if [ -n "$VERSION" ]; then
-            AG_NAME_MID="_${VERSION}"
-            AG_LINUX_MID="_${VERSION}"
+          # Windows - only process exe file, no bundle directory needed
+          if [ "$PLATFORM" = "windows-latest" ]; then
+            # Direct executable output (no installer)
+            EXE_SRC="src-tauri/target/${{ matrix.target }}/release/antigravity-agent.exe"
+            EXE_DEST="src-tauri/target/${{ matrix.target }}/release/Antigravity.Agent${AG_NAME_MID}_x64.exe"
+            
+            if [ -f "$EXE_SRC" ]; then
+              cp "$EXE_SRC" "$EXE_DEST"
+              echo "✅ Created standalone exe: $EXE_DEST"
+            else
+              echo "❌ Exe file not found: $EXE_SRC"
+              echo "Contents of release directory:"
+              ls -la "src-tauri/target/${{ matrix.target }}/release/" || true
+              exit 1
+            fi
           else
-            AG_NAME_MID=""
-            AG_LINUX_MID=""
+            # macOS and Linux - bundle directory is required
+            if [ ! -d "$BUNDLE_DIR" ]; then
+              echo "❌ Bundle directory not found: $BUNDLE_DIR"
+              echo "Searching for bundle directories:"
+              find src-tauri/target -type d -name "bundle" 2>/dev/null || true
+              exit 1
+            fi
           fi
 
           # macOS
@@ -163,21 +181,6 @@ jobs:
             fi
           fi
 
-          # Windows
-          if [ "$PLATFORM" = "windows-latest" ]; then
-            # Direct executable output (no installer)
-            EXE_SRC="src-tauri/target/${{ matrix.target }}/release/antigravity-agent.exe"
-            EXE_DEST="src-tauri/target/${{ matrix.target }}/release/Antigravity.Agent${AG_NAME_MID}_x64.exe"
-            
-            if [ -f "$EXE_SRC" ]; then
-              cp "$EXE_SRC" "$EXE_DEST"
-              echo "✅ Created standalone exe: $EXE_DEST"
-            else
-              echo "❌ Exe file not found: $EXE_SRC"
-              exit 1
-            fi
-          fi
-
           # Linux
           if [ "$PLATFORM" = "ubuntu-22.04" ]; then
             if [ -d "$BUNDLE_DIR/deb" ]; then
@@ -203,6 +206,13 @@ jobs:
         run: |
           echo "=== Starting upload process for tag: $TAG ==="
           RELEASE_DIR="src-tauri/target/${{ matrix.target }}/release"
+          VERSION="${{ inputs.version }}"
+          
+          if [ -n "$VERSION" ]; then
+            AG_NAME_MID="_${VERSION}"
+          else
+            AG_NAME_MID=""
+          fi
 
           if [ ! -d "$RELEASE_DIR" ]; then
             echo "❌ Release directory not found: $RELEASE_DIR"
