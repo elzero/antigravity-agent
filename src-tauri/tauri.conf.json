@@ -29,11 +29,7 @@
       "digestAlgorithm": "sha256",
       "timestampUrl": ""
     },
-    "targets": [
-      "dmg",
-      "deb",
-      "app"
-    ]
+    "targets": []
   },
   "plugins": {
     "updater": {
