@@ -103,8 +103,6 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - macos-latest  # 与 autobuild.yml 和 release.yml 保持一致
-          - ubuntu-latest
           - windows-latest
 
     runs-on: ${{ matrix.platform }}
