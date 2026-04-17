@@ -177,34 +177,17 @@ jobs:
 
           # Windows
           if [ "$PLATFORM" = "windows-latest" ]; then
-            if [ -d "$BUNDLE_DIR/msi" ]; then
-              (
-                cd "$BUNDLE_DIR/msi/"
-                for file in *.msi *.msi.zip; do
-                  if [ -f "$file" ]; then
-                    if echo "$file" | grep -q "\\.msi\\.zip$"; then
-                      rename_with_sig "$file" "Antigravity.Agent${AG_NAME_MID}_x64-setup.msi.zip"
-                    else
-                      rename_with_sig "$file" "Antigravity.Agent${AG_NAME_MID}_x64-setup.msi"
-                    fi
-                  fi
-                done
-              )
-            fi
-
-            if [ -d "$BUNDLE_DIR/nsis" ]; then
-              (
-                cd "$BUNDLE_DIR/nsis/"
-                for file in *.exe *.nsis.zip; do
-                  if [ -f "$file" ]; then
-                    if echo "$file" | grep -q "\\.nsis\\.zip$"; then
-                      rename_with_sig "$file" "Antigravity.Agent${AG_NAME_MID}_x64-setup.nsis.zip"
-                    else
-                      rename_with_sig "$file" "Antigravity.Agent${AG_NAME_MID}_x64-setup.exe"
-                    fi
-                  fi
-                done
-              )
+            # Direct executable output (no installer)
+            EXE_SRC="src-tauri/target/${{ matrix.target }}/release/antigravity-agent.exe"
+            EXE_DEST="$BUNDLE_DIR/Antigravity.Agent${AG_NAME_MID}_x64.exe"
+                      
+            if [ -f "$EXE_SRC" ]; then
+              mkdir -p "$BUNDLE_DIR"
+              cp "$EXE_SRC" "$EXE_DEST"
+              echo "✅ Created standalone exe: $EXE_DEST"
+            else
+              echo "❌ Exe file not found: $EXE_SRC"
+              exit 1
             fi
           fi
 
@@ -222,29 +205,7 @@ jobs:
             fi
           fi
 
-      - name: Create Windows Portable Version
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          Write-Host "=== Creating Windows Portable Version ==="
 
-          $exePath = "src-tauri\target\${{ matrix.target }}\release\antigravity-agent.exe"
-          $outputDir = "portable-package"
-          $bundleDir = "src-tauri\target\${{ matrix.target }}\release\bundle"
-          $zipPath = "$bundleDir\Antigravity-Agent-${{ matrix.arch }}-Portable.zip"
-
-          if (!(Test-Path $bundleDir)) {
-            New-Item -ItemType Directory -Force -Path $bundleDir | Out-Null
-          }
-
-          if (Test-Path $exePath) {
-            New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
-            Copy-Item $exePath "$outputDir\Antigravity.Agent.exe"
-            Compress-Archive -Path "$outputDir\*" -DestinationPath $zipPath -Force
-            Remove-Item -Recurse -Force $outputDir
-          } else {
-            Write-Host "❌ Exe file not found: $exePath"
-          }
 
       - name: Upload artifacts to release
         env:

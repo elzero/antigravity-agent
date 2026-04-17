@@ -30,7 +30,6 @@
       "timestampUrl": ""
     },
     "targets": [
-      "nsis",
       "dmg",
       "deb",
       "app"
