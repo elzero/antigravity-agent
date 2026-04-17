@@ -132,35 +132,21 @@ jobs:
               echo "${var_prefix}_file=$file" >> $GITHUB_ENV
               echo "${var_prefix}_type=$type" >> $GITHUB_ENV
               
-              # Check for signature file
+              # Check for signature file (optional when using dangerousInsecureSecretKey)
               local sig_file="${file}.sig"
-              if [ ! -f "$sig_file" ]; then
-                echo "❌ Missing signature for $platform-$arch: $(basename $file)"
-                exit 1
+              if [ -f "$sig_file" ]; then
+                echo "${var_prefix}_sig=$sig_file" >> $GITHUB_ENV
+                echo "   └─ Signature: $(basename $sig_file)"
+              else
+                echo "   └─ ⚠️ No signature file (unsigned build)"
               fi
-              echo "${var_prefix}_sig=$sig_file" >> $GITHUB_ENV
-              echo "   └─ Signature: $(basename $sig_file)"
               return 0
             fi
             return 1
           }
           
-          # Windows updater bundle (NSIS installer)
-          detect_file "*setup*.exe" "windows" "x86_64" "nsis" || detect_file "*.msi" "windows" "x86_64" "msi"
-          
-          # macOS updater bundle (app tarball)
-          detect_file "*aarch64*.app.tar.gz" "darwin" "aarch64" "app"
-          detect_file "*x86_64*.app.tar.gz" "darwin" "x86_64" "app"
-          
-          # Linux updater bundle (optional)
-          # Prefer AppImage artifacts. If unavailable, fallback to .deb when signed.
-          if detect_file "*amd64*.AppImage.tar.gz" "linux" "x86_64" "appimage" || detect_file "*amd64*.AppImage" "linux" "x86_64" "appimage"; then
-            echo "✅ Linux updater artifact detected via AppImage"
-          elif detect_file "*_amd64.deb" "linux" "x86_64" "deb"; then
-            echo "⚠️ Linux AppImage not found, fallback to signed .deb artifact"
-          else
-            echo "⚠️ No Linux updater artifact found, linux-x86_64 will be omitted from latest.json"
-          fi
+          # Windows updater bundle (standalone exe)
+          detect_file "*.exe" "windows" "x86_64" "exe"
           
           echo ""
           echo "=== Detection Summary ==="
@@ -209,11 +195,8 @@ jobs:
             fi
           }
           
-          # Add platforms
+          # Add platforms (Windows only)
           add_platform "windows-x86_64" "windows_x86_64_file" "windows_x86_64_sig"
-          add_platform "darwin-aarch64" "darwin_aarch64_file" "darwin_aarch64_sig"
-          add_platform "darwin-x86_64" "darwin_x86_64_file" "darwin_x86_64_sig"
-          add_platform "linux-x86_64" "linux_x86_64_file" "linux_x86_64_sig"
           
           # Generate final JSON
           jq -n \
