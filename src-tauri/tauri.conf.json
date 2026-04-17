@@ -43,6 +43,7 @@
         "https://github.com/MonchiLin/antigravity-agent/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUldRZkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQT09",
+      "dangerousInsecureSecretKey": true,
       "windows": {
         "installMode": "passive"
       }
