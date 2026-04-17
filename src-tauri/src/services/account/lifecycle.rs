@@ -16,23 +16,45 @@ fn parse_account_response(
     let antigravity_auth_status = parse_auth_status_to_value(&fields.auth_status)
         .map_err(|e| format!("Failed to parse auth status for {context}: {e}"))?;
 
+    // OAuth Token 解码失败时不阻断账户加载，降级为 None
     let oauth_token = fields
         .oauth_token
         .as_deref()
         .map(str::trim)
         .filter(|raw| !raw.is_empty())
-        .map(decode_oauth_token_to_struct)
-        .transpose()
-        .map_err(|e| format!("Failed to decode oauth token for {context}: {e}"))?;
+        .map(|raw| match decode_oauth_token_to_struct(raw) {
+            Ok(decoded) => Some(decoded),
+            Err(e) => {
+                tracing::warn!(
+                    target: "account::load",
+                    "OAuth token 解码失败({}), 将跳过该字段: {}",
+                    context,
+                    e
+                );
+                None
+            }
+        })
+        .flatten();
 
+    // User Status 解码失败时不阻断账户加载，降级为 None
     let user_status = fields
         .user_status
         .as_deref()
         .map(str::trim)
         .filter(|raw| !raw.is_empty())
-        .map(decode_user_status_to_struct)
-        .transpose()
-        .map_err(|e| format!("Failed to decode user status for {context}: {e}"))?;
+        .map(|raw| match decode_user_status_to_struct(raw) {
+            Ok(decoded) => Some(decoded),
+            Err(e) => {
+                tracing::warn!(
+                    target: "account::load",
+                    "User status 解码失败({}), 将跳过该字段: {}",
+                    context,
+                    e
+                );
+                None
+            }
+        })
+        .flatten();
 
     Ok(AntigravityAccountResponse {
         antigravity_auth_status,

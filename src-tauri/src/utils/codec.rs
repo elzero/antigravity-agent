@@ -29,18 +29,35 @@ pub fn decode_oauth_token(raw: &str) -> Result<Value, String> {
         .data
         .ok_or_else(|| "oauthToken 缺少 data".to_string())?;
 
-    let oauth_info_bytes =
-        decode_base64(&data.oauth_info_base64, "oauthToken.data.oauth_info_base64")?;
-    let oauth_info = crate::proto::state_sync::OAuthInfo::decode(oauth_info_bytes.as_slice())
-        .map_err(|e| format!("oauthToken OAuthInfo Proto 解码失败: {}", e))?;
+    // 尝试两种格式：新版(JSON) 和 旧版(Base64 Proto)
+    let oauth_info_result = if data.oauth_info_base64.starts_with('{') {
+        // 新版格式：直接是 JSON 字符串
+        serde_json::from_str::<Value>(&data.oauth_info_base64)
+            .map_err(|e| format!("oauth_info_base64 JSON 解析失败: {}", e))
+    } else {
+        // 旧版格式：Base64 编码的 Proto 数据
+        let oauth_info_bytes =
+            decode_base64(&data.oauth_info_base64, "oauthToken.data.oauth_info_base64")?;
+        let oauth_info = crate::proto::state_sync::OAuthInfo::decode(oauth_info_bytes.as_slice())
+            .map_err(|e| format!("oauthToken OAuthInfo Proto 解码失败: {}", e))?;
 
-    Ok(serde_json::json!({
-        "sentinelKey": inner.sentinel_key,
-        "accessToken": oauth_info.access_token,
-        "refreshToken": oauth_info.refresh_token,
-        "tokenType": oauth_info.token_type,
-        "expirySeconds": oauth_info.expiry.map(|t| t.seconds),
-    }))
+        Ok(serde_json::json!({
+            "accessToken": oauth_info.access_token,
+            "refreshToken": oauth_info.refresh_token,
+            "tokenType": oauth_info.token_type,
+            "expirySeconds": oauth_info.expiry.map(|t| t.seconds),
+        }))
+    };
+
+    let oauth_info = oauth_info_result?;
+
+    // 合并 sentinelKey 和 oauth_info 内容
+    let mut result = oauth_info;
+    if let Some(obj) = result.as_object_mut() {
+        obj.insert("sentinelKey".to_string(), Value::String(inner.sentinel_key.clone()));
+    }
+
+    Ok(result)
 }
 
 pub fn decode_user_status(raw: &str) -> Result<Value, String> {
