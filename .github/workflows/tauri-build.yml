@@ -206,6 +206,7 @@ jobs:
         run: |
           echo "=== Starting upload process for tag: $TAG ==="
           RELEASE_DIR="src-tauri/target/${{ matrix.target }}/release"
+          PLATFORM="${{ matrix.platform }}"
           VERSION="${{ inputs.version }}"
           
           if [ -n "$VERSION" ]; then
@@ -227,6 +228,8 @@ jobs:
               gh release upload "$TAG" "$EXE_FILE" --clobber --repo "$REPO"
             else
               echo "❌ Exe file not found: $EXE_FILE"
+              echo "Contents of release directory:"
+              ls -la "$RELEASE_DIR" || true
               exit 1
             fi
           fi
